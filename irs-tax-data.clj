@@ -3,9 +3,9 @@
   (:require [incanter.stats :as stats])
   (:require [clojure.zip :as zip])
   (:require [clojure.xml :as xml])
-  (:require [clojure.contrib.lazy-xml :as lazy-xml])
   (:require [clojure.contrib.io :as io])
-  (:require [clojure.contrib.string :as string]))
+  (:require [clojure.contrib.string :as string])
+  (:require [clojure.contrib.lazy-xml :as lazy-xml]))
 
 (def map-file-name "maps/USA_Counties_with_FIPS_and_names.svg")
 (def map-colors ["#F7FBFF" "#DEEBF7" "#C6DBEF" "#9ECAE1" "#6BAED6" "#4292C6" "#2171B5" "#08519C" "#08306B"])
@@ -21,7 +21,7 @@
 				  [(subvec lv 0 2)(subvec lv 3 6)(subvec lv 7 9)(subvec lv 10 41)
 				   (subvec lv 43 55)(subvec lv 55 67)(subvec lv 67 79)(subvec lv 79 91)
 				   (subvec lv 91 103)(subvec lv 103 115)])]
-	  (if-not (= (nth tv 1) "000")
+	  (if-not (or (= (nth tv 1) "000") (= (last tv) -1))
 		(recur (rest i) (assoc output (apply str (take 2 tv)) (concat (take 2 (drop 2 tv)) (map #(Integer. %) (drop 4 tv)))))
 		(recur (rest i) output)))
 	output))
@@ -43,12 +43,12 @@
 (defn graph [parser data]
   (doall
    (let [d (parser data)]
-	 (io/spit output-file-name 
-			  (with-out-str
-				(lazy-xml/emit
-				 (color-map
-				  (zip/xml-zip (lazy-xml/parse-trim (java.io.File. map-file-name)))
-				  (partial get (fmap (partial color map-colors (stats/quantile (vals d))) d))))))
+	 (io/with-out-writer output-file-name
+	   (lazy-xml/emit
+		(color-map
+		 (zip/xml-zip (lazy-xml/parse-trim (java.io.File. map-file-name)))
+		 (partial get (fmap (partial color map-colors (stats/quantile (vals d))) d)))
+		:indent 4))
 	
 	 (println (stats/quantile (vals d)))
 	 (map prn d))))
